@@ -15,9 +15,9 @@
 # This illustrates the merged configuration for ConfigMap ate-api-authentication
 # in the ate-system namespace.
 #
-# Note: For real clusters, run config/patch-substrate-authn.sh which automatically
-# preserves your cluster's existing Kubernetes issuer and injects the Keycloak
-# CA certificate into this ConfigMap.
+# Note: For real clusters, run 'kubectl ate admin add-jwt-provider keycloak ...'
+# which automatically preserves your cluster's existing Kubernetes issuer and
+# injects the Keycloak CA certificate into this ConfigMap.
 
 apiVersion: v1
 kind: ConfigMap

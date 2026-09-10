@@ -54,7 +54,6 @@ sequenceDiagram
 demos/keycloak/
 ├── README.md                      # This guide
 ├── generate-certs.sh              # Generates TLS certs and CA for Keycloak
-├── patch-substrate-authn.sh       # Merges Keycloak provider into ate-api-authentication
 ├── get-token.sh                   # Helper script to fetch user tokens from Keycloak
 └── config/
     ├── keycloak.yaml              # Kubernetes Deployment and Service for Keycloak
@@ -140,16 +139,24 @@ Keycloak automatically imports `substrate-realm.json` during startup.
 
 Substrate's API server reads its trusted JWT issuers from the `ate-api-authentication` ConfigMap in `ate-system`.
 
-Run the provided patch script to merge Keycloak into the configuration and inject Keycloak's CA certificate:
+Use `kubectl-ate admin add-jwt-provider` to add Keycloak as a trusted JWT provider and inject its CA certificate:
 
 ```bash
-./demos/keycloak/patch-substrate-authn.sh
+# Using kubectl plugin (ensure 'go install ./cmd/kubectl-ate' was run):
+kubectl ate admin add-jwt-provider keycloak \
+  --issuer="https://keycloak.keycloak.svc.cluster.local:8443/realms/substrate" \
+  --audience="substrate" \
+  --ca-secret="keycloak-tls" \
+  --ca-secret-namespace="keycloak" \
+  --ca-secret-key="ca.crt"
+
+# Or using the repository binary directly:
+# ./bin/kubectl-ate admin add-jwt-provider keycloak ...
 ```
 
-What this script does:
-1. Reads `ca.crt` from `keycloak/keycloak-tls`.
-2. Fetches the existing `authentication.yaml` from `ate-system/ate-api-authentication` (preserving the in-cluster Kubernetes service account issuer).
-3. Adds the Keycloak provider:
+What this command does:
+1. **Validates & Extracts CA**: Reads and verifies the x509 PEM certificate from Secret `keycloak/keycloak-tls` (key `ca.crt`).
+2. **Safe In-Cluster Merge**: Fetches `ate-api-authentication` from `ate-system`, parses `authentication.yaml`, and safely upserts the Keycloak provider:
    ```yaml
    - name: keycloak
      issuer: https://keycloak.keycloak.svc.cluster.local:8443/realms/substrate
@@ -157,8 +164,9 @@ What this script does:
      - substrate
      certificateAuthorityFile: /etc/ateapi/authentication/keycloak-ca.crt
    ```
-4. Stores both `authentication.yaml` and `keycloak-ca.crt` in `ate-api-authentication`.
-5. Restarts `deployment/ate-api-server` and waits for it to finish rolling out.
+3. **Pre-flight Validation**: Runs `ateapiauth.ValidateAuthenticationConfig` before writing to Kubernetes, ensuring zero apiserver crash-loops.
+4. **Atomic Write**: Saves both `authentication.yaml` and `keycloak-ca.crt` in ConfigMap `ate-api-authentication` using optimistic concurrency control.
+5. **Rollout Restart**: Automatically triggers a rolling restart of `deployment/ate-api-server` and waits for it to complete.
 
 ---
 
