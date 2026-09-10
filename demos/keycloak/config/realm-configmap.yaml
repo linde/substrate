@@ -1,0 +1,174 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: keycloak
+data:
+  substrate-realm.json: |
+    {
+      "id": "substrate",
+      "realm": "substrate",
+      "displayName": "Agent Substrate",
+      "enabled": true,
+      "sslRequired": "external",
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "resetPasswordAllowed": false,
+      "roles": {
+        "realm": [
+          {
+            "name": "admin",
+            "description": "Administrator with full cluster control"
+          },
+          {
+            "name": "developer",
+            "description": "Agent developer who can create and run actors"
+          },
+          {
+            "name": "viewer",
+            "description": "Read-only access to cluster state"
+          }
+        ]
+      },
+      "groups": [
+        {
+          "name": "admins",
+          "path": "/admins",
+          "realmRoles": [
+            "admin"
+          ]
+        },
+        {
+          "name": "developers",
+          "path": "/developers",
+          "realmRoles": [
+            "developer"
+          ]
+        },
+        {
+          "name": "viewers",
+          "path": "/viewers",
+          "realmRoles": [
+            "viewer"
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "alice",
+          "enabled": true,
+          "email": "alice@example.com",
+          "firstName": "Alice",
+          "lastName": "Admin",
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "alicepassword",
+              "temporary": false
+            }
+          ],
+          "groups": [
+            "/admins",
+            "/developers"
+          ]
+        },
+        {
+          "username": "bob",
+          "enabled": true,
+          "email": "bob@example.com",
+          "firstName": "Bob",
+          "lastName": "Developer",
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "bobpassword",
+              "temporary": false
+            }
+          ],
+          "groups": [
+            "/developers"
+          ]
+        },
+        {
+          "username": "charlie",
+          "enabled": true,
+          "email": "charlie@example.com",
+          "firstName": "Charlie",
+          "lastName": "Viewer",
+          "emailVerified": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "charliepassword",
+              "temporary": false
+            }
+          ],
+          "groups": [
+            "/viewers"
+          ]
+        }
+      ],
+      "clients": [
+        {
+          "clientId": "substrate-cli",
+          "name": "Substrate CLI",
+          "description": "Client used by kubectl-ate and automation scripts",
+          "enabled": true,
+          "publicClient": true,
+          "directAccessGrantsEnabled": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "serviceAccountsEnabled": false,
+          "protocol": "openid-connect",
+          "defaultClientScopes": [
+            "basic",
+            "web-origins",
+            "acr",
+            "roles",
+            "profile",
+            "email"
+          ],
+          "protocolMappers": [
+            {
+              "name": "substrate-audience-mapper",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "consentRequired": false,
+              "config": {
+                "included.client.audience": "substrate",
+                "id.token.claim": "true",
+                "access.token.claim": "true"
+              }
+            },
+            {
+              "name": "groups-mapper",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-group-membership-mapper",
+              "consentRequired": false,
+              "config": {
+                "claim.name": "groups",
+                "full.path": "false",
+                "id.token.claim": "true",
+                "access.token.claim": "true"
+              }
+            }
+          ]
+        }
+      ]
+    }
